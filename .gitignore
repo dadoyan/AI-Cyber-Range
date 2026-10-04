@@ -1,0 +1,23 @@
+.env
+__pycache__/
+.pytest_cache/
+*.py[cod]
+private/artifacts/*
+!private/artifacts/.gitkeep
+.ipynb_checkpoints/
+participant/workspace/.ipynb_checkpoints/
+
+/work/
+/assets/mnist/source/
+
+# Deployment state, local reports, and editor recovery files.
+.env.*
+!.env.example
+/research/
+/outputs/
+*.log
+*.sqlite
+*.sqlite3
+*.db
+*.db-wal
+*.db-shm

@@ -1,0 +1,297 @@
+name: ai-cyber-range
+
+services:
+  ctfd:
+    image: ghcr.io/ctfd/ctfd:3.8.7
+    environment:
+      SECRET_KEY: ${CTFD_SECRET_KEY:?Set CTFD_SECRET_KEY in .env}
+      DATABASE_URL: sqlite:////var/uploads/ctfd.db
+      UPLOAD_FOLDER: /var/uploads/uploads
+      LOG_FOLDER: /var/uploads/logs
+      WORKERS: 1
+      WORKSPACE_CTFD_PUBLIC_URL: ${CTFD_URL:-http://localhost:8001}
+      WORKSPACE_LAUNCHER_PUBLIC_URL: ${PARTICIPANT_URL:-http://localhost:7000}
+      WORKSPACE_LAUNCHER_INTERNAL_URL: http://launcher:7000/internal/workspace-launch
+      MLFLOW_PUBLIC_URL: ${MLFLOW_PUBLIC_URL:-http://localhost:5000}
+      XRAY_REDBLUE_URL: http://xray-redblue:5000
+    ports:
+      - "127.0.0.1:8001:8000"
+    volumes:
+      - ctfd-data:/var/uploads
+      - ./ctfd/plugins/workspace_launcher:/opt/CTFd/CTFd/plugins/workspace_launcher:ro
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/', timeout=3)"
+      interval: 15s
+      timeout: 5s
+      retries: 8
+      start_period: 45s
+    restart: unless-stopped
+
+  mlflow:
+    image: ghcr.io/mlflow/mlflow:v3.16.1
+    command:
+      - mlflow
+      - server
+      - --backend-store-uri
+      - sqlite:////mlflow/mlflow.db
+      - --artifacts-destination
+      - /mlflow/artifacts
+      - --host
+      - 0.0.0.0
+      - --port
+      - "5000"
+    environment:
+      MLFLOW_SERVER_ALLOWED_HOSTS: localhost,localhost:5000,127.0.0.1,127.0.0.1:5000,mlflow,mlflow:5000
+    ports:
+      - "127.0.0.1:5000:5000"
+    volumes:
+      - mlflow-data:/mlflow
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - "import urllib.request; urllib.request.urlopen('http://127.0.0.1:5000/health', timeout=3)"
+      interval: 15s
+      timeout: 5s
+      retries: 8
+      start_period: 45s
+    restart: unless-stopped
+
+  patchguard-target:
+    image: ai-cyber-patchguard:local
+    build:
+      context: .
+      dockerfile: patchguard/Dockerfile
+    environment:
+      PATCHGUARD_FLAG: ${PATCHGUARD_FLAG:?Set PATCHGUARD_FLAG in .env}
+      PATCHGUARD_CLEAN_THRESHOLD: ${PATCHGUARD_CLEAN_THRESHOLD:?Set calibrated PATCHGUARD_CLEAN_THRESHOLD in .env}
+      PATCHGUARD_ROBUST_THRESHOLD: ${PATCHGUARD_ROBUST_THRESHOLD:?Set calibrated PATCHGUARD_ROBUST_THRESHOLD in .env}
+      PATCHGUARD_ASSETS_DIR: /opt/patchguard-private
+      PATCHGUARD_MAX_MODEL_BYTES: 16777216
+      PATCHGUARD_EVALUATOR_VERSION: ${PATCHGUARD_EVALUATOR_VERSION:-1}
+      TORCH_NUM_THREADS: 2
+      MLFLOW_TRACKING_URI: ${MLFLOW_TRACKING_URI:-http://mlflow:5000}
+      MLFLOW_EXPERIMENT_NAME: ${MLFLOW_PATCHGUARD_EXPERIMENT_NAME:-patchguard}
+      MLFLOW_HTTP_REQUEST_TIMEOUT: 3
+      MLFLOW_HTTP_REQUEST_MAX_RETRIES: 0
+    ports:
+      - "127.0.0.1:8002:8000"
+    volumes:
+      - ./private/patchguard/eval_assets:/opt/patchguard-private:ro
+      - ./private/patchguard:/opt/private/patchguard:ro
+      - ./private/artifacts/patchguard:/opt/artifacts/patchguard
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=3)"
+      interval: 15s
+      timeout: 5s
+      retries: 8
+      start_period: 30s
+    restart: unless-stopped
+
+  xray-redblue:
+    profiles: ["xray-redblue"]
+    image: ai-cyber-xray-redblue:local
+    entrypoint: []
+    build:
+      context: .
+      dockerfile: xray_red_blue/Dockerfile
+      args:
+        XRAY_BASE_IMAGE: ${XRAY_BASE_IMAGE:-adv_demo}
+    environment:
+      XRAY_STATE_DIR: /app/redblue-state
+      XRAY_ADMIN_TOKEN: ${CTFD_SECRET_KEY:?Set CTFD_SECRET_KEY in .env}
+      XRAY_TORCH_THREADS: ${XRAY_TORCH_THREADS:-2}
+      XRAY_SAMPLES_PER_CLASS: ${XRAY_SAMPLES_PER_CLASS:-16}
+      XRAY_RED_MIN_ASR: ${XRAY_RED_MIN_ASR:-0.40}
+      XRAY_BLUE_MIN_CLEAN_ACCURACY: ${XRAY_BLUE_MIN_CLEAN_ACCURACY:-0.65}
+      XRAY_BLUE_MIN_ADV_RESOLVED: ${XRAY_BLUE_MIN_ADV_RESOLVED:-0.55}
+      XRAY_BLUE_MIN_ADV_GAIN: ${XRAY_BLUE_MIN_ADV_GAIN:-0.05}
+      XRAY_BLUE_MIN_DETECTION_RATE: ${XRAY_BLUE_MIN_DETECTION_RATE:-0.05}
+      XRAY_BLUE_MAX_FALSE_POSITIVE_RATE: ${XRAY_BLUE_MAX_FALSE_POSITIVE_RATE:-0.25}
+      MLFLOW_TRACKING_URI: ${MLFLOW_TRACKING_URI:-http://mlflow:5000}
+      MLFLOW_EXPERIMENT_NAME: ${MLFLOW_XRAY_EXPERIMENT_NAME:-xray-redblue}
+      MLFLOW_HTTP_REQUEST_TIMEOUT: 3
+      MLFLOW_HTTP_REQUEST_MAX_RETRIES: 0
+      WORKSPACE_LAUNCHER_URL: http://launcher:7000
+      XRAY_IDENTITY_RESOLVE_KEY: ${CTFD_SECRET_KEY:?Set CTFD_SECRET_KEY in .env}
+      XRAY_ARENA_INTERNAL_KEY: ${CTFD_SECRET_KEY:?Set CTFD_SECRET_KEY in .env}
+      XRAY_RED_FLAG: ${XRAY_RED_FLAG:-}
+      XRAY_BLUE_FLAG: ${XRAY_BLUE_FLAG:-}
+    cpus: ${XRAY_CPU_LIMIT:-2.0}
+    mem_limit: ${XRAY_MEMORY_LIMIT:-3g}
+    ports:
+      - "127.0.0.1:8003:5000"
+    volumes:
+      - xray-redblue-data:/app/redblue-state
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - "import urllib.request; urllib.request.urlopen('http://127.0.0.1:5000/api/health', timeout=5)"
+      interval: 15s
+      timeout: 7s
+      retries: 5
+      start_period: 90s
+    restart: unless-stopped
+
+  arena-service:
+    profiles: ["xray-redblue"]
+    build:
+      context: ./arena_service
+      dockerfile: Dockerfile
+    environment:
+      ARENA_DATA_DIR: /data
+      XRAY_EVALUATOR_URL: http://xray-redblue:5000
+      ARENA_INTERNAL_KEY: ${CTFD_SECRET_KEY:?Set CTFD_SECRET_KEY in .env}
+      ARENA_LAUNCHER_KEY: ${CTFD_SECRET_KEY:?Set CTFD_SECRET_KEY in .env}
+      ARENA_ADMIN_KEY: ${CTFD_SECRET_KEY:?Set CTFD_SECRET_KEY in .env}
+      XRAY_RED_FLAG: ${XRAY_RED_FLAG:-}
+      XRAY_BLUE_FLAG: ${XRAY_BLUE_FLAG:-}
+      XRAY_EVALUATOR_TIMEOUT: ${XRAY_EVALUATOR_TIMEOUT:-180}
+      MLFLOW_TRACKING_URI: ${MLFLOW_TRACKING_URI:-http://mlflow:5000}
+      MLFLOW_EXPERIMENT_NAME: ${MLFLOW_ARENA_EXPERIMENT_NAME:-red_blue_arena}
+      MLFLOW_HTTP_REQUEST_TIMEOUT: 3
+      MLFLOW_HTTP_REQUEST_MAX_RETRIES: 0
+    ports:
+      - "127.0.0.1:8004:5000"
+    volumes:
+      - arena-data:/data
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - "import urllib.request; urllib.request.urlopen('http://127.0.0.1:5000/health', timeout=3)"
+      interval: 15s
+      timeout: 5s
+      retries: 8
+      start_period: 20s
+    restart: unless-stopped
+
+  llm-safety-target:
+    profiles: ["llm-safety"]
+    image: ai-cyber-llm-safety:local
+    build:
+      context: .
+      dockerfile: llm_safety/Dockerfile
+    environment:
+      LLM_SAFETY_FLAG: ${LLM_SAFETY_FLAG:-}
+      LLM_SAFETY_ALLOWED_USER_ID: ${LLM_SAFETY_ALLOWED_USER_ID:-}
+      LLM_SAFETY_IDENTITY_RESOLVE_KEY: ${CTFD_SECRET_KEY:?Set CTFD_SECRET_KEY in .env}
+      WORKSPACE_LAUNCHER_URL: http://launcher:7000
+      LLM_SAFETY_STATE_DIR: /app/state
+      MLFLOW_TRACKING_URI: ${MLFLOW_TRACKING_URI:-http://mlflow:5000}
+      MLFLOW_LLM_SAFETY_EXPERIMENT_NAME: ${MLFLOW_LLM_SAFETY_EXPERIMENT_NAME:-llm-safety}
+      MLFLOW_HTTP_REQUEST_TIMEOUT: 5
+      MLFLOW_HTTP_REQUEST_MAX_RETRIES: 0
+      HF_HOME: /models
+    ports:
+      - "127.0.0.1:8005:8000"
+    volumes:
+      - llm-safety-state:/app/state
+      - llm-safety-models:/models
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=3)"
+      interval: 15s
+      timeout: 5s
+      retries: 8
+      start_period: 90s
+    restart: unless-stopped
+
+  participant:
+    image: ${PARTICIPANT_IMAGE:-ai-cyber-participant:local}
+    build:
+      context: .
+      dockerfile: participant/Dockerfile
+    environment:
+      PATCHGUARD_TARGET_URL: http://patchguard-target:8000
+      XRAY_REDBLUE_URL: http://xray-redblue:5000
+      ARENA_URL: http://arena-service:5000
+      LLM_SAFETY_URL: http://llm-safety-target:8000
+      CTFD_PUBLIC_URL: ${CTFD_URL:-http://localhost:8001}
+      JUPYTER_TOKEN: ${JUPYTER_TOKEN:-}
+    depends_on:
+      patchguard-target:
+        condition: service_healthy
+    ports:
+      - "127.0.0.1:8888:8888"
+    volumes:
+      - ./participant/workspace:/workspace
+      - ./assets/mnist/processed:/workspace/data/MNIST/processed:ro
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8888/login', timeout=3)"
+      interval: 15s
+      timeout: 5s
+      retries: 8
+      start_period: 30s
+    restart: unless-stopped
+
+  launcher:
+    build:
+      context: .
+      dockerfile: launcher/Dockerfile
+    environment:
+      PARTICIPANT_IMAGE: ${PARTICIPANT_IMAGE:-ai-cyber-participant:local}
+      RANGE_DOCKER_NETWORK: ${RANGE_DOCKER_NETWORK:-ai-cyber-range_default}
+      WORKSPACE_PORT_START: ${WORKSPACE_PORT_START:-9001}
+      WORKSPACE_PORT_END: ${WORKSPACE_PORT_END:-9099}
+      WORKSPACE_BIND_HOST: ${WORKSPACE_BIND_HOST:-127.0.0.1}
+      WORKSPACE_PUBLIC_BASE_URL: ${WORKSPACE_PUBLIC_BASE_URL:-http://localhost}
+      PATCHGUARD_TARGET_URL: http://patchguard-target:8000
+      XRAY_REDBLUE_URL: http://xray-redblue:5000
+      CTFD_PUBLIC_URL: ${CTFD_URL:-http://localhost:8001}
+      WORKSPACE_READY_TIMEOUT: ${WORKSPACE_READY_TIMEOUT:-30}
+      WORKSPACE_MEMORY_LIMIT: ${WORKSPACE_MEMORY_LIMIT:-}
+      WORKSPACE_CPU_LIMIT: ${WORKSPACE_CPU_LIMIT:-}
+      WORKSPACE_GPU_ENABLED: ${WORKSPACE_GPU_ENABLED:-false}
+      WORKSPACE_LAUNCH_SECRET: ${CTFD_SECRET_KEY:?Set CTFD_SECRET_KEY in .env}
+      WORKSPACE_IDENTITY_RESOLVE_KEY: ${CTFD_SECRET_KEY:?Set CTFD_SECRET_KEY in .env}
+      ARENA_URL: http://arena-service:5000
+      LLM_SAFETY_URL: http://llm-safety-target:8000
+      ARENA_LAUNCHER_KEY: ${CTFD_SECRET_KEY:?Set CTFD_SECRET_KEY in .env}
+    ports:
+      - "${LAUNCHER_BIND_HOST:-127.0.0.1}:7000:7000"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - launcher-data:/data
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - "import urllib.request; urllib.request.urlopen('http://127.0.0.1:7000/health', timeout=3)"
+      interval: 15s
+      timeout: 5s
+      retries: 8
+      start_period: 15s
+    restart: unless-stopped
+    depends_on:
+      patchguard-target:
+        condition: service_healthy
+
+volumes:
+  ctfd-data:
+  mlflow-data:
+  launcher-data:
+  xray-redblue-data:
+  arena-data:
+  llm-safety-state:
+  llm-safety-models:

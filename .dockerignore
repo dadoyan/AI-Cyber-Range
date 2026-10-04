@@ -1,0 +1,15 @@
+# PatchGuard source dataset download/cache is local build-time scratch.
+/work/
+/participant/workspace/data/
+/participant/workspace/_tmp_patchguard_hidden.pt
+# Archived benchmark evidence is not part of application build contexts.
+/research/
+**/__pycache__/
+**/.pytest_cache/
+**/.ipynb_checkpoints/
+
+.git
+.env
+.env.*
+/xray_base/
+/private/artifacts/

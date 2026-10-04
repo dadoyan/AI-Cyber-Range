@@ -1,0 +1,7 @@
+jupyterlab==4.4.7
+matplotlib==3.10.7
+numpy==2.3.3
+Pillow==11.3.0
+requests==2.32.5
+transformers==4.57.6
+accelerate==1.12.0

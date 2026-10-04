@@ -1,0 +1,30 @@
+# Add to the base Compose file for NVIDIA GPU execution (including RTX 5090).
+x-gpu-compute: &gpu-compute
+  build:
+    args:
+      PYTORCH_INDEX_URL: https://download.pytorch.org/whl/cu130
+  environment:
+    TORCH_DEVICE: cuda
+  deploy:
+    resources:
+      reservations:
+        devices:
+          - driver: nvidia
+            count: all
+            capabilities: [gpu]
+
+services:
+  patchguard-target:
+    <<: *gpu-compute
+  participant:
+    <<: *gpu-compute
+  launcher:
+    environment:
+      WORKSPACE_GPU_ENABLED: "true"
+      TORCH_DEVICE: cuda
+  xray-redblue:
+    <<: *gpu-compute
+    # The CUDA libraries and model need more host RAM than the CPU-only demo.
+    mem_limit: ${XRAY_GPU_MEMORY_LIMIT:-8g}
+  llm-safety-target:
+    <<: *gpu-compute
