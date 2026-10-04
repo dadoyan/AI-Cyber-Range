@@ -24,14 +24,15 @@ images used to select an input for the FGSM exercise.
 
 ![X-Ray Red notebook displaying the approved chest X-ray gallery](docs/images/xray-red-notebook.jpg)
 
-**LLM prompt safety:** An unscored prompt trial displays one model reply about
-system instructions and user prompts. Each probe samples ten replies without
-filling a scoring slot; this view shows one of those replies.
+**LLM prompt safety:** A direct-request prompt and all ten actual model replies
+from an unscored trial. The attack failed in every reply (0/10 successes);
+passing requires at least 6/10. The trial does not fill a scoring slot.
 
-![LLM prompt-safety notebook displaying a prompt and one model reply](docs/images/llm-prompt-reply.jpg)
+![LLM prompt-safety notebook showing a prompt and all ten failed attack attempts](docs/images/llm-prompt-reply.jpg)
 
-**CTFd challenge board:** X-Ray Red is marked as solved for the signed-in
-participant, and X-Ray Blue is available.
+**CTFd challenge board:** X-Ray Red is green with a **Solved** badge for the
+signed-in participant, and X-Ray Blue is available. The same badge and colour
+apply to every challenge that participant solves.
 
 ![CTFd challenge board with X-Ray Red marked as solved](docs/images/ctfd-xray-red-solved.jpg)
 
@@ -123,9 +124,10 @@ launcher provisions an isolated workspace for that CTFd account. Exercise files
 are grouped in `patchguard/`, `xray_red/`, `xray_blue/`, and `llm_safety/`.
 `start_here.ipynb` links to the supported exercises and reports their readiness.
 
-CTFd shows **Solved by you** on challenges solved by the current account. X-Ray
-Blue is shown as a disabled card until its prerequisite is satisfied. The Blue
-notebook displays the validated adversarial image when launched from CTFd.
+CTFd highlights challenges solved by the current account in green with a
+**Solved** badge. X-Ray Blue is shown as a disabled card until its prerequisite
+is satisfied. The Blue notebook displays the validated adversarial image when
+launched from CTFd.
 
 The administrator's **Workspaces** page can stop a workspace while preserving
 its files, or reset/delete it when the participant's work may be discarded.

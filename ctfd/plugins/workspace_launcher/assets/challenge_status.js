@@ -4,7 +4,7 @@
   const labelSolvedCards = () => {
     document.querySelectorAll("button.challenge-button.challenge-solved").forEach(button => {
       const name = button.querySelector(".challenge-inner p")?.textContent?.trim();
-      if (name) button.setAttribute("aria-label", `${name} — solved by you`);
+      if (name) button.setAttribute("aria-label", `${name} — Solved`);
     });
   };
 

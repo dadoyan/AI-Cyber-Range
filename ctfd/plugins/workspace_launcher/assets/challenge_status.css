@@ -10,7 +10,7 @@
 }
 
 .challenge-button.challenge-solved .challenge-inner::before {
-  content: "✓ Solved by you";
+  content: "Solved";
   display: inline-block;
   margin-bottom: 0.55rem;
   padding: 0.2rem 0.6rem;

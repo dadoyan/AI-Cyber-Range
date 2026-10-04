@@ -17,8 +17,8 @@ workspace once it is ready. The ordinary navigation link opens
 `start_here.ipynb`, which links to all available exercises.
 
 CTFd's per-account `solved_by_me` status marks completed challenge cards. The
-plugin gives those cards a visible **Solved by you** badge; new accounts receive
-the same behavior automatically as they submit flags.
+plugin highlights those cards in green with a visible **Solved** badge; new
+accounts receive the same behavior automatically as they submit flags.
 
 X-Ray Blue remains visible as a disabled prerequisite preview for each account
 until that account submits its own X-Ray Red flag. A valid Arena Red submission

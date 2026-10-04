@@ -60,8 +60,8 @@ def load(app):
 
     register_plugin_script("/workspace-launcher-assets/xray_blue_locked.js")
     register_plugin_stylesheet("/workspace-launcher-assets/xray_blue_locked.css")
-    register_plugin_script("/workspace-launcher-assets/challenge_status.js")
-    register_plugin_stylesheet("/workspace-launcher-assets/challenge_status.css")
+    register_plugin_script("/workspace-launcher-assets/challenge_status.js?v=2")
+    register_plugin_stylesheet("/workspace-launcher-assets/challenge_status.css?v=2")
 
     ctfd_url = os.environ.get(
         "WORKSPACE_CTFD_PUBLIC_URL", "http://localhost:8001"
