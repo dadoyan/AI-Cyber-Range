@@ -17,6 +17,24 @@ evaluator → returned flag → flag submission in CTFd**. These are educational
 exercises. The image defenses provide empirical results, not formal robustness
 certificates or medical diagnostic capabilities.
 
+## Screenshots
+
+**X-Ray Red:** The participant notebook displays the approved chest X-ray
+images used to select an input for the FGSM exercise.
+
+![X-Ray Red notebook displaying the approved chest X-ray gallery](docs/images/xray-red-notebook.jpg)
+
+**LLM prompt safety:** An unscored prompt trial displays one model reply about
+system instructions and user prompts. Each probe samples ten replies without
+filling a scoring slot; this view shows one of those replies.
+
+![LLM prompt-safety notebook displaying a prompt and one model reply](docs/images/llm-prompt-reply.jpg)
+
+**CTFd challenge board:** X-Ray Red is marked as solved for the signed-in
+participant, and X-Ray Blue is available.
+
+![CTFd challenge board with X-Ray Red marked as solved](docs/images/ctfd-xray-red-solved.jpg)
+
 ## Services
 
 | Service | Local URL | Purpose |
